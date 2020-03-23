@@ -1,0 +1,413 @@
+AQM Data Extraction Coding Assignment
+files = dir("*.DAT");
+
+finaloutput = table.empty(0,17); %wtf
+finaloutput.Properties.VariableNames = {'subno','FnoAorder','FnoAformat','cbcond','trialnum','phase','include',...
+    'cue1','cue2','cue3','cue4','outcome','response','prob_out1','resp_rew','resp_corr','RT'};
+
+FnoAtable = zeros(40,2);
+% Index counter for the size of files to loop through each file
+for i = 1:size(files)
+    
+    tempfile = files(i).name;
+    
+    % Subject number
+    subno = files(i).name(1:size(files(i).name,2)-4);
+    
+    fid = fopen(tempfile);
+    test = textscan(fid,'%q %q %q %q %q %q %q %q %q %q');
+    
+    training1 = zeros(52,13);
+    test1 = zeros(14,11);
+    count1 = 0;
+    count2 = 0;
+    count3 = 0;
+    t1 = zeros(0,5);
+    t2 = zeros(0,5);
+    
+    col1 = test{1,1};
+    col2 = test{1,2};
+    col3 = test{1,3};
+    col4 = test{1,4};
+    col5 = test{1,5};
+    col6 = test{1,6};
+    col7 = test{1,7};
+    col8 = test{1,8};
+    %cell2table -> table2array -> str2double
+    if col1{5,1} =="FnoA"
+        FnoAorder = 1;
+    else
+        FnoAorder = 2;
+    end
+    if col1{4,1} == "weather"
+        FnoAformat = "Fbk=D";
+        FANum = 1;
+    else
+        FnoAformat = "Fbk=W";
+        FANum = 2;
+    end
+    if FnoAorder == 1
+        if FANum == 1
+            cbcond = 3;
+        else
+            cbcond = 4;
+        end
+    else
+        if FANum == 1
+            cbcond = 1;
+        else
+            cbcond = 2;
+        end
+    end
+    %Response given is variable f for below
+    if FnoAorder == 1
+        for ii = 7:58
+            phase = "train";
+            if (ii >= 129 && ii<= 132)
+                include = 0;
+            else
+                include = 1;
+            end
+            prob_out1 = 0.5;
+            b1 = 0;
+            c1 = 0;
+            d1 = 0;
+            e1 = 0;
+            a = str2double(table2array(cell2table(col1(ii,1)))); %trial number
+            b = str2double(table2array(cell2table(col2(ii,1)))); %cue
+            if b == 1
+                b1 = 0.25;
+            end
+            c = str2double(table2array(cell2table(col3(ii,1)))); %cue
+            if c == 1
+                c1 = 0.25;
+            end
+            d = str2double(table2array(cell2table(col4(ii,1)))); %cue
+            if d == 1
+                d1 = -0.25;
+            end
+            e = str2double(table2array(cell2table(col5(ii,1)))); %cue
+            if e == 1
+                e1 = -0.25;
+            end
+            f = str2double(table2array(cell2table(col6(ii,1)))); %outcome
+            if f == 0
+                f = 2;
+            end
+            rc = str2double(table2array(cell2table(col7(ii,1)))); % resp_corr?
+            g = str2double(table2array(cell2table(col8(ii,1)))); %resp_time
+            p = prob_out1 + b1 + c1 + d1 + e1; %prob_out1
+            if rc == 1     %response
+                response = f;
+            else
+                response = 3 - f;
+            end
+            
+            if (ii >= 129 && ii<= 132)
+                resp_rew = NaN;
+            else
+                resp_rew = rc;
+            end
+            
+            if rc == 1 && p > 0.5
+                resp_corr = 1;    %normatively correct
+            elseif rc == 1 && p < 0.5
+                resp_corr = 0 ;   %normatively incorrect
+            elseif rc == 0 && p > 0.5
+                resp_corr = 0;
+            elseif rc == 0 && p < 0.5
+                resp_corr = 1;
+            else
+                resp_corr = NaN;
+            end
+            
+            count1 = count1 + 1;
+            training1(count1, 1:13) = [a b c d e f rc g p response resp_rew resp_corr include];
+            t1(count1, 1:5) = [subno FnoAorder FnoAformat cbcond phase];
+        end
+        
+        %t1(:,1), t1(:,2), t1(:,3), t1(:,4) t1(:,5)
+        output = table(t1(:,1), t1(:,2), t1(:,3), t1(:,4), training1(:,1), t1(:,5),training1(:,13), training1(:,2),training1(:,3), training1(:,4), training1(:,5),...
+            training1(:,6), training1(:,10), training1(:,9), training1(:,11), training1(:,12), training1(:,8),'VariableNames',{'subno','FnoAorder',...
+            'FnoAformat','cbcond','trialnum','phase','include','cue1','cue2','cue3','cue4','outcome','response','prob_out1',...
+            'resp_rew','resp_corr','RT'});
+        
+        for ii = 60:73
+            phase = "test";
+            include = 1;
+            prob_out1 = 0.5;
+            b1 = 0;
+            c1 = 0;
+            d1 = 0;
+            e1 = 0;
+            a = str2double(table2array(cell2table(col1(ii,1))));
+            b = str2double(table2array(cell2table(col2(ii,1)))); %cue
+            if b == 1
+                b1 = 0.25;
+            end
+            c = str2double(table2array(cell2table(col3(ii,1)))); %cue
+            if c == 1
+                c1 = 0.25;
+            end
+            d = str2double(table2array(cell2table(col4(ii,1)))); %cue
+            if d == 1
+                d1 = -0.25;
+            end
+            e = str2double(table2array(cell2table(col5(ii,1)))); %cue
+            if e == 1
+                e1 = -0.25;
+            end
+            f = str2double(table2array(cell2table(col6(ii,1)))); % particpants response choice
+            
+            g = str2double(table2array(cell2table(col7(ii,1)))); %particpants RT
+            p = prob_out1 + b1 + c1 + d1 + e1; % probabistic outcome of outcome 1
+            
+            if f == 1 && p > 0.5
+                resp_corr = 1;    %normatively correct
+            elseif f == 1 && p < 0.5
+                resp_corr = 0 ;   %normatively incorrect
+            elseif f == 2 && p > 0.5
+                resp_corr = 0;
+            elseif f == 2 && p < 0.5
+                resp_corr = 1;
+            else
+                resp_corr = NaN;
+            end
+            % resp_corr
+            count2 = count2 + 1;
+            test1(count2, 1:12) = [a b c d e f g p response resp_corr include NaN];%need to have phase training or test
+            t2(count2, 1:5) = [subno FnoAorder FnoAformat cbcond phase];
+        end
+        output2 = table(t2(:,1), t2(:,2), t2(:,3), t2(:,4), test1(:,1), t2(:,5),test1(:,11), test1(:,2),test1(:,3), test1(:,4), test1(:,5),...
+            test1(:,12), test1(:,9), test1(:,8), test1(:,12), test1(:,10), test1(:,7),'VariableNames',{'subno','FnoAorder',...
+            'FnoAformat','cbcond','trialnum','phase','include','cue1','cue2','cue3','cue4','outcome','response','prob_out1',...
+            'resp_rew','resp_corr','RT'});
+        
+        num_corr = 0;
+        Nitems_FnoA = 0;
+        for iii = 1:14
+            if test1(iii,10) == 1 && test1(iii,7) > 0.5
+                num_corr = num_corr + 1;
+            end
+            if (~isnan(test1(iii,10))) && (test1(iii,7) > 0.5)
+                Nitems_FnoA = Nitems_FnoA + 1;
+            end
+            
+            
+            FnoAcorr = num_corr/Nitems_FnoA;
+            
+            count3 = count3 + 1;
+            FnoAtable(count3, 1:2) = [FnoAcorr Nitems_FnoA];
+        end
+    else
+        for ii = 77:132
+            phase = "train";
+            if (ii >= 129 && ii<= 132)
+                include = 0;
+            else
+                include = 1;
+            end
+            prob_out1 = 0.5;
+            b1 = 0;
+            c1 = 0;
+            d1 = 0;
+            e1 = 0;
+            a = str2double(table2array(cell2table(col1(ii,1)))); %trial number
+            b = str2double(table2array(cell2table(col2(ii,1)))); %cue
+            if b == 1
+                b1 = 0.25;
+            end
+            c = str2double(table2array(cell2table(col3(ii,1)))); %cue
+            if c == 1
+                c1 = 0.25;
+            end
+            d = str2double(table2array(cell2table(col4(ii,1)))); %cue
+            if d == 1
+                d1 = -0.25;
+            end
+            e = str2double(table2array(cell2table(col5(ii,1)))); %cue
+            if e == 1
+                e1 = -0.25;
+            end
+            f = str2double(table2array(cell2table(col6(ii,1)))); %outcome
+            if f == 0
+                f = 2;
+            end
+            rc = str2double(table2array(cell2table(col7(ii,1)))); % resp_corr?
+            g = str2double(table2array(cell2table(col8(ii,1)))); %resp_time
+            p = prob_out1 + b1 + c1 + d1 + e1; %prob_out1
+            if rc == 1     %response
+                response = f;
+            else
+                response = 3 - f;
+            end
+            
+            if (ii >= 129 && ii<= 132)
+                resp_rew = NaN;
+            else
+                resp_rew = rc;
+            end
+            
+            if rc == 1 && p > 0.5
+                resp_corr = 1;    %normatively correct
+            elseif rc == 1 && p < 0.5
+                resp_corr = 0 ;   %normatively incorrect
+            elseif rc == 0 && p > 0.5
+                resp_corr = 0;
+            elseif rc == 0 && p < 0.5
+                resp_corr = 1;
+            else
+                resp_corr = NaN;
+            end
+            
+            count1 = count1 + 1;
+            training1(count1, 1:13) = [a b c d e f rc g p response resp_rew resp_corr include];
+            t1(count1, 1:5) = [subno FnoAorder FnoAformat cbcond phase];
+        end
+        
+        %t1(:,1), t1(:,2), t1(:,3), t1(:,4) t1(:,5)
+        output = table(t1(:,1), t1(:,2), t1(:,3), t1(:,4), training1(:,1), t1(:,5),training1(:,13), training1(:,2),training1(:,3), training1(:,4), training1(:,5),...
+            training1(:,6), training1(:,10), training1(:,9), training1(:,11), training1(:,12), training1(:,8),'VariableNames',{'subno','FnoAorder',...
+            'FnoAformat','cbcond','trialnum','phase','include','cue1','cue2','cue3','cue4','outcome','response','prob_out1',...
+            'resp_rew','resp_corr','RT'});
+        
+        for ii = 134:147
+            phase = "test";
+            include = 1;
+            prob_out1 = 0.5;
+            b1 = 0;
+            c1 = 0;
+            d1 = 0;
+            e1 = 0;
+            a = str2double(table2array(cell2table(col1(ii,1))));
+            b = str2double(table2array(cell2table(col2(ii,1)))); %cue
+            if b == 1
+                b1 = 0.25;
+            end
+            c = str2double(table2array(cell2table(col3(ii,1)))); %cue
+            if c == 1
+                c1 = 0.25;
+            end
+            d = str2double(table2array(cell2table(col4(ii,1)))); %cue
+            if d == 1
+                d1 = -0.25;
+            end
+            e = str2double(table2array(cell2table(col5(ii,1)))); %cue
+            if e == 1
+                e1 = -0.25;
+            end
+            f = str2double(table2array(cell2table(col6(ii,1)))); % particpants response choice
+            
+            g = str2double(table2array(cell2table(col7(ii,1)))); %particpants RT
+            p = prob_out1 + b1 + c1 + d1 + e1; % probabistic outcome of outcome 1
+            
+            if f == 1 && p > 0.5
+                resp_corr = 1;    %normatively correct
+            elseif f == 1 && p < 0.5
+                resp_corr = 0 ;   %normatively incorrect
+            elseif f == 2 && p > 0.5
+                resp_corr = 0;
+            elseif f == 2 && p < 0.5
+                resp_corr = 1;
+            else
+                resp_corr = NaN;
+            end
+            % resp_corr
+            count2 = count2 + 1;
+            test1(count2, 1:12) = [a b c d e f g p response resp_corr include NaN];%need to have phase training or test
+            t2(count2, 1:5) = [subno FnoAorder FnoAformat cbcond phase];
+        end
+        
+        output2 = table(t2(:,1), t2(:,2), t2(:,3), t2(:,4), test1(:,1), t2(:,5),test1(:,11), test1(:,2),test1(:,3), test1(:,4), test1(:,5),...
+            test1(:,12), test1(:,9), test1(:,8), test1(:,12), test1(:,10), test1(:,7),'VariableNames',{'subno','FnoAorder',...
+            'FnoAformat','cbcond','trialnum','phase','include','cue1','cue2','cue3','cue4','outcome','response','prob_out1',...
+            'resp_rew','resp_corr','RT'});
+        %resp_rew
+        
+        num_corr = 0;
+        Nitems_FnoA = 0;
+        for iii = 1:14
+            if test1(iii,10) == 1 && test1(iii,7) > 0.5
+                num_corr = num_corr + 1;
+            end
+            if (~isnan(test1(iii,10))) && (test1(iii,7) > 0.5)
+                Nitems_FnoA = Nitems_FnoA + 1;
+            end
+            
+        end
+        
+        FnoAcorr = num_corr/Nitems_FnoA;
+        
+        count3 = count3 + 1;
+        FnoAtable(count3, 1:2) = [FnoAcorr Nitems_FnoA];
+    end
+    
+    finaloutput = [finaloutput; output; output2];
+    
+    
+    %output to main output here, after cycle
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+% subno Subject code
+% (1,1)
+
+% FnoAorder Ordinal position of test for the feedback no attention condition (1st or 2nd)
+% if (1,5) == FnoA, then 1, else 2
+
+% FnoAformat Fbk=D (disease) or Fbk=W (weather)
+% if (1,4) == weath, then "Fbk=D", else "Fbk=W"
+
+% cbcond Counterbalancing condition (1-4: based on a combination of the values of the 2 previous variables)
+% if FnoAorder = 1 then if FnoAformat = "Fbk=D", = 1 etc
+
+% trialnum Trial number (1-56=train; 57-70=test)
+
+% phase Training or test
+
+% include include the trial for this participant (1=yes; 0=no) [0 for trials where there was a bug in recording trial outcome for some Ss)
+
+% cue1 if (1,5) == "FnoA" then for i = 7:62? else i = 77:147  NEED TO
+% ACCOUNT FOR BREAKS
+
+% cue2
+
+% cue3
+
+% cue4
+
+% outcome Outcome 1 or 2 (rain or sun; calditis or nermitis, depending on task); there is no outcome on the test phase trials
+
+% response Response given (i.e. outcome predicted by participant), 1 or 2
+
+% prob_out1 Probability of outcome=1 for that cue combination over whole training phase
+
+% resp_rew Was response rewarded (1=yes); i.e. does response=outcome; there is no outcome on the test phase trials so this variable should be missing for the test phase. It is also missing when include=0.
+
+% resp_corr Was the response normatively correct (1=yes; 0=no; missing data =no normatively correct response, i.e. each outcome has 50% occurrence for that unique stimulus). The normatively correct response is the one based on the outcome associations for the specific cue combination in the stimulus, taken over whole of training phase
+% WORK OUT FROM FUCK UP IN TEXT
+
+% RT Response time in seconds (NB occasional very fast RTs were caused by holding the response key down)
+
+
+% FnoAcorr Proportion correct in test phase of the FnoA condition
+
+% Nitems_FnoA Number of valid test phase response for the FnoA condition
+
+
